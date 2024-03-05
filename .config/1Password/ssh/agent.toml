@@ -1,0 +1,4 @@
+# Add my Git authentication key from my Work vault
+[[ssh-keys]]
+item = "Gitlab"
+vault = "EKSA"
