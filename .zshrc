@@ -1,15 +1,33 @@
 #!/usr/bin/env zsh
 
-export ZSH="$HOME/.oh-my-zsh"
+export OMZ="$HOME/.oh-my-zsh"
 export MANPATH="/usr/local/man:$MANPATH"
 export LANG=C.UTF-8
-export KUBECONFIG="$HOME/.kube/config"
+export ZSH_CUSTOM="${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"
 
-# plugins=(fzf)
+plugins=(git fzf)
+
+
+function kubectl () {
+    command kubectl $*
+    if [[ -z $KUBECTL_COMPLETE ]]
+    then
+        source <(command kubectl completion zsh)
+        KUBECTL_COMPLETE=1 
+    fi
+}
+
+function install-lscolors {
+  export LSCOLORS_DIR=${ZSH_CUSTOM:?}/plugins/LS_COLORS
+  mkdir -p ${LSCOLORS_DIR:?}
+  curl -Ll https://api.github.com/repos/trapd00r/LS_COLORS/tarball/master \
+    | tar xzf - --directory=$LSCOLORS_DIR --strip=1
+}
+
 
 function install-fzf-tab ()  {
-  FZF_TAB_DIR=${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab
-  test -d "$FZF_TAB_DIR" && exit 0
+  FZF_TAB_DIR=${ZSH_CUSTOM:?}/plugins/fzf-tab
+  test -d "$FZF_TAB_DIR" && return
   mkdir -p "${FZF_TAB_DIR:?}"
   set -x
   git clone https://github.com/Aloxaf/fzf-tab $FZF_TAB_DIR
@@ -17,9 +35,12 @@ function install-fzf-tab ()  {
   set +x
 }
 
-function init-fzftab () {
-  install-fzf-tab
-  . "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fzf-tab/fzf-tab.plugin.zsh"
+function init-fzf-tab () {
+  FZF_TAB_DIR=${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fzf-tab
+  test -d "$FZF_TAB_DIR" && install-fzf-tab
+  . "${ZSH_CUSTOM:?}/plugins/fzf-tab/fzf-tab.plugin.zsh"
+  . "/plugins/fzf-tab/fzf-tab.plugin.zsh"
+
   plugins+=(fzf-tab)
 
   # disable sort when completing `git checkout`
@@ -54,30 +75,39 @@ function init-dots () {
   [[ -d ~/.dots ]] && alias dots="git --git-dir=${HOME:?}/.dots --work-tree=${HOME:?}"
 }
 
-function init-kubectl () {
-  command -v kubectl &>/dev/null || exit 0
-  source <(kubectl completion zsh)
-  alias kubectl=kubecolor
-  compdef kubecolor=kubectl
-  plugins+=(kubectl helm)
-}
 
-
-init-fzftab
+#init-fzf-tab
 init-dots
-init-kubectl
 
 #
 #  [[ KUBERNETES TOOL CONFIGURATION ]]
 #
+#
+#  [ KREW ]
+#  
 export PATH="~/.local/bin:${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+#
+#  [ KUBECTL ]
+#
+#
+#
+function init-kubectl () {
+  command -v kubectl &>/dev/null || exit 0
+  source <(kubectl completion zsh)
+  alias k=kubecolor
+  alias kubectl=kubecolor
+
+  compdef kubecolor=kubectl
+  plugins+=(kubectl helm)
+}
+init-kubectl
+
 
 
 ZSH_THEME="custom"
 HYPHEN_INSENSITIVE="true"
 CASE_SENSITIVE="off"
 
-source $ZSH/oh-my-zsh.sh
 
 if [[ -n $SSH_CONNECTION ]]; then
   export EDITOR='vim'
@@ -88,13 +118,8 @@ else
 fi
 
 
-if [[ -d ~/.dots ]]; then
-  # https://www.atlassian.com/git/tutorials/dotfiles
-  alias dots="git --git-dir=${HOME:?}/.dots --work-tree=${HOME:?}"
-fi
-
 setopt auto_cd
-cdpath=($HOME/.)
+cdpath=($HOME/. $HOME/src)
 
 function km() {
   #
@@ -116,10 +141,10 @@ nnn_cd()
 }
 trap nnn_cd EXIT
 
-path=('~/.wasmtime' '~/.local/share/nvim/mason/bin' '~/.local/bin' '~/bin' $path)
+path=('~/go/bin' '/opt/node/bin' '~/.wasmtime' '~/.local/share/nvim/mason/bin' '~/.local/bin' '~/bin' $path)
 
-export GITLAB_HOME=$HOME/src/docker-gitlab/data
-export WASMTIME_HOME="$HOME/.wasmtime"
+export GITLAB_HOME=~/src/docker-gitlab/data
+export WASMTIME_HOME=~/.wasmtime
 
 
 
@@ -142,7 +167,8 @@ zstyle ':completion:*:(ssh|scp|rsync):*:hosts-ipaddr' ignored-patterns '^(<->.<-
 zstyle ':completion:*' matcher-list '' 'm:{[:lower:][:upper:]}={[:upper:][:lower:]}' '+l:|?=** r:|?=**'
 
  # Initialize the autocompletion
-autoload -Uz compinit && compinit -i
+#autoload -Uz compinit && compinit -i
+autoload -U +X compinit && compinit
 
 eval "$(starship init zsh)"
 
@@ -164,13 +190,13 @@ for arg in "$@"; do
 done'
 
 ### Added by Zinit's installer
-if [[ ! -f $HOME/.local/share/zinit/zinit.git/zinit.zsh ]]; then
-    print -P "%F{33} %F{220}Installing %F{33}ZDHARMA-CONTINUUM%F{220} Initiative Plugin Manager (%F{33}zdharma-continuum/zinit%F{220})…%f"
-    command mkdir -p "$HOME/.local/share/zinit" && command chmod g-rwX "$HOME/.local/share/zinit"
-    command git clone https://github.com/zdharma-continuum/zinit "$HOME/.local/share/zinit/zinit.git" && \
-        print -P "%F{33} %F{34}Installation successful.%f%b" || \
-        print -P "%F{160} The clone has failed.%f%b"
-fi
+# if [[ ! -f $HOME/.local/share/zinit/zinit.git/zinit.zsh ]]; then
+#     print -P "%F{33} %F{220}Installing %F{33}ZDHARMA-CONTINUUM%F{220} Initiative Plugin Manager (%F{33}zdharma-continuum/zinit%F{220})…%f"
+#     command mkdir -p "$HOME/.local/share/zinit" && command chmod g-rwX "$HOME/.local/share/zinit"
+#     command git clone https://github.com/zdharma-continuum/zinit "$HOME/.local/share/zinit/zinit.git" && \
+#         print -P "%F{33} %F{34}Installation successful.%f%b" || \
+#         print -P "%F{160} The clone has failed.%f%b"
+# fi
 
 source "$HOME/.local/share/zinit/zinit.git/zinit.zsh"
 autoload -Uz _zinit
@@ -186,6 +212,7 @@ zinit light-mode for \
 
 ### End of Zinit's installer chunk
 export LIBGL_ALWAYS_INDIRECT=1 #GWSL
+alias vim=nvim
 alias k=kubecolor
 alias kubectl=kubecolor
 alias kg='kubecolor get'
@@ -207,6 +234,7 @@ _fzf_comprun() {
     *)            fzf "$@" ;;
   esac
 }
+
 # kill -9 **<TAB>
 # ssh **<TAB>
 # telnet **<TAB>
@@ -217,3 +245,16 @@ alias kg.apps='kubecolor get -A daemonsets.apps,statefulsets.apps,deployments.ap
 
 . /etc/profile.d/z.sh
 # Copyright (c) 2009 rupa deadwyler.
+
+  ### ZNT's installer added snippet ###
+  fpath=( "$fpath[@]" "$HOME/.config/znt/zsh-navigation-tools" )
+  autoload n-aliases n-cd n-env n-functions n-history n-kill n-list n-list-draw n-list-input n-options n-panelize n-help
+  autoload znt-usetty-wrapper znt-history-widget znt-cd-widget znt-kill-widget
+  alias naliases=n-aliases ncd=n-cd nenv=n-env nfunctions=n-functions nhistory=n-history
+  alias nkill=n-kill noptions=n-options npanelize=n-panelize nhelp=n-help
+  zle -N znt-history-widget
+  bindkey '^R' znt-history-widget
+  setopt AUTO_PUSHD HIST_IGNORE_DUPS PUSHD_IGNORE_DUPS
+  zstyle ':completion::complete:n-kill::bits' matcher 'r:|=** l:|=*'
+  ### END ###
+
