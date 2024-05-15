@@ -3,7 +3,7 @@
 export OMZ="$HOME/.oh-my-zsh"
 export MANPATH="/usr/local/man:$MANPATH"
 export LANG=C.UTF-8
-export ZSH_CUSTOM="${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"
+export ZSH_CUSTOM="${ZSH_CUSTOM:-"~/.oh-my-zsh/custom"}"
 
 plugins=(git fzf)
 
@@ -72,12 +72,44 @@ function init-fzf-tab () {
 
 function init-dots () {
   # https://www.atlassian.com/git/tutorials/dotfiles
-  [[ -d ~/.dots ]] && alias dots="git --git-dir=${HOME:?}/.dots --work-tree=${HOME:?}"
+  if [[ -d ~/.dots ]]; then
+    alias dots="git --git-dir=${HOME:?}/.dots --work-tree=${HOME:?}"
+  else
+    git clone --bare https://github.com/kriipke/dots $HOME/.cfg
+    function config {
+      /usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME $@
+    }
+    mkdir -p .config-backup
+    config checkout
+    if [ $? = 0 ]; then
+      echo "Checked out config.";
+      else
+        echo "Backing up pre-existing dot files.";
+        config checkout 2>&1 | egrep "\s+\." | awk {'print $1'} | xargs -I{} mv {} .config-backup/{}
+    fi;
+    config checkout
+    config config status.showUntrackedFiles no
+    git clone --bare https://github.com/kriipke/dots $HOME/.cfg
+    function config {
+      /usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME $@
+    }
+    mkdir -p .config-backup
+    config checkout
+    if [ $? = 0 ]; then
+      echo "Checked out config.";
+      else
+        echo "Backing up pre-existing dot files.";
+        config checkout 2>&1 | egrep "\s+\." | awk {'print $1'} | xargs -I{} mv {} .config-backup/{}
+    fi;
+    config checkout
+    config config status.showUntrackedFiles no
+  fi
 }
+
+init-dots
 
 
 #init-fzf-tab
-init-dots
 
 #
 #  [[ KUBERNETES TOOL CONFIGURATION ]]
@@ -189,14 +221,14 @@ for arg in "$@"; do
     { git diff --color=always -- "$arg" | git log --color=always "$arg" } 2>/dev/null
 done'
 
-### Added by Zinit's installer
-# if [[ ! -f $HOME/.local/share/zinit/zinit.git/zinit.zsh ]]; then
-#     print -P "%F{33} %F{220}Installing %F{33}ZDHARMA-CONTINUUM%F{220} Initiative Plugin Manager (%F{33}zdharma-continuum/zinit%F{220})…%f"
-#     command mkdir -p "$HOME/.local/share/zinit" && command chmod g-rwX "$HOME/.local/share/zinit"
-#     command git clone https://github.com/zdharma-continuum/zinit "$HOME/.local/share/zinit/zinit.git" && \
-#         print -P "%F{33} %F{34}Installation successful.%f%b" || \
-#         print -P "%F{160} The clone has failed.%f%b"
-# fi
+## Added by Zinit's installer
+ if [[ ! -f $HOME/.local/share/zinit/zinit.git/zinit.zsh ]]; then
+     print -P "%F{33} %F{220}Installing %F{33}ZDHARMA-CONTINUUM%F{220} Initiative Plugin Manager (%F{33}zdharma-continuum/zinit%F{220})…%f"
+     command mkdir -p "$HOME/.local/share/zinit" && command chmod g-rwX "$HOME/.local/share/zinit"
+     command git clone https://github.com/zdharma-continuum/zinit "$HOME/.local/share/zinit/zinit.git" && \
+         print -P "%F{33} %F{34}Installation successful.%f%b" || \
+         print -P "%F{160} The clone has failed.%f%b"
+ fi
 
 source "$HOME/.local/share/zinit/zinit.git/zinit.zsh"
 autoload -Uz _zinit
@@ -209,6 +241,8 @@ zinit light-mode for \
     zdharma-continuum/zinit-annex-bin-gem-node \
     zdharma-continuum/zinit-annex-patch-dl \
     zdharma-continuum/zinit-annex-rust
+
+zinit pack for fzf
 
 ### End of Zinit's installer chunk
 export LIBGL_ALWAYS_INDIRECT=1 #GWSL
@@ -272,6 +306,8 @@ export DISABLE_AUTO_TITLE="true"
 #  kubectl config 
 #}
 
+export LS_COLORS="$(vivid -d /home/spencer/.config/vivid/config/filetypes.yml generate rose-pine-dawn)"
+
 function set_prompt() {
   if [[ -f $KUBECONFIG ]]; then
     export STARSHIP_CONFIG=$HOME/.config/starship.toml
@@ -283,6 +319,14 @@ function set_terminal_title() {
   echo -en "\e]2;$kubectl config current-context 2>/dev/null || echo $SHELL\a"
 }
 precmd_functions+=(set_terminal_title set_prompt)
+
+nnn_cd()                                                                                                   
+{
+    if ! [ -z "$NNN_PIPE" ]; then
+        printf "%s\0" "0c${PWD}" > "${NNN_PIPE}" !&
+    fi  
+}
+trap nnn_cd EXIT
 
 alias fzf=/home/spencer/.fzf/bin/fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
