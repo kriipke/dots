@@ -242,6 +242,9 @@ _fzf_comprun() {
 # export **<TAB>
 # unalias **<TAB>
 alias kg.apps='kubecolor get -A daemonsets.apps,statefulsets.apps,deployments.apps'
+alias vim='nvim -u $HOME/.config/nvim/init.lua'
+alias nvim='nvim -u $HOME/.config/nvim/init.lua'
+alias vi='nvim -u $HOME/.config/nvim/init.lua'
 
 . /etc/profile.d/z.sh
 # Copyright (c) 2009 rupa deadwyler.
@@ -258,3 +261,28 @@ alias kg.apps='kubecolor get -A daemonsets.apps,statefulsets.apps,deployments.ap
   zstyle ':completion::complete:n-kill::bits' matcher 'r:|=** l:|=*'
   ### END ###
 
+#alias kubefile='export KUBECONFIG=$(fd -a -e kubeconfig . /home/spencer/.kube/pail | fzf --no-sort --preview="kubectl config get-contexts --kubeconfig {}")'
+alias kubefile='export KUBECONFIG=$(fd -a -e kubeconfig .   /IAC/KUBECONFIGS/ | fzf --no-sort --preview="KUBECONFIG={} k9s")'
+ 
+
+# oh-my-zsh seems to enable this by default, not desired for 
+# workflow of controlling terminal title.
+export DISABLE_AUTO_TITLE="true"
+#function set_win_title(){
+#  kubectl config 
+#}
+
+function set_prompt() {
+  if [[ -f $KUBECONFIG ]]; then
+    export STARSHIP_CONFIG=$HOME/.config/starship.toml
+  else
+    export STARSHIP_CONFIG=$HOME/.config/starship/sans-kubeconfig.toml
+  fi
+}
+function set_terminal_title() {
+  echo -en "\e]2;$kubectl config current-context 2>/dev/null || echo $SHELL\a"
+}
+precmd_functions+=(set_terminal_title set_prompt)
+
+alias fzf=/home/spencer/.fzf/bin/fzf
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
