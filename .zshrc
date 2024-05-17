@@ -320,13 +320,25 @@ function set_terminal_title() {
 }
 precmd_functions+=(set_terminal_title set_prompt)
 
-nnn_cd()                                                                                                   
+#nnn_cd()                                                                                                   
+#{
+#    if ! [ -z "$NNN_PIPE" ]; then
+#        printf "%s\0" "0c${PWD}" > "${NNN_PIPE}" !&
+#    fi  
+#}
+#trap nnn_cd EXIT
+
+export NNN_TMPFILE="/tmp/nnn"
+
+n()
 {
-    if ! [ -z "$NNN_PIPE" ]; then
-        printf "%s\0" "0c${PWD}" > "${NNN_PIPE}" !&
-    fi  
+    nnn "$@"
+
+    if [ -f $NNN_TMPFILE ]; then
+        . $NNN_TMPFILE
+        rm $NNN_TMPFILE
+    fi
 }
-trap nnn_cd EXIT
 
 alias fzf=/home/spencer/.fzf/bin/fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
